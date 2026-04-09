@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.pyc
+output/*
+queue/*
+library/videos/*
+library/thumbnails/*
+overlays/images/*
+overlays/config.json
+config.json
+.env
+*.tmp
+overlays/*.png

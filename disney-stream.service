@@ -1,0 +1,20 @@
+[Unit]
+Description=Disney Piano Livestream
+After=network.target
+
+[Service]
+Type=simple
+User=dward
+WorkingDirectory=/home/dward/disney-stream
+EnvironmentFile=/home/dward/disney-stream/.env
+ExecStart=/home/dward/disney-stream/venv/bin/gunicorn \
+    --bind 0.0.0.0:8080 \
+    --workers 1 \
+    --threads 4 \
+    --timeout 300 \
+    app:app
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

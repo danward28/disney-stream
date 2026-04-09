@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h2>Settings</h2>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>API Keys & Stream Configuration</h3>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="/settings">
+            <div class="form-group">
+                <label for="anthropic-key">Anthropic API Key</label>
+                <div class="input-password">
+                    <input type="password" name="ANTHROPIC_API_KEY" id="anthropic-key"
+                           value="{{ config.ANTHROPIC_API_KEY }}"
+                           placeholder="sk-ant-...">
+                    <button type="button" class="btn-toggle-pw" onclick="togglePw('anthropic-key')">Show</button>
+                </div>
+                <span class="hint">Required for Piano generator (Claude API)</span>
+            </div>
+
+            <div class="form-group">
+                <label for="stream-key">YouTube Stream Key</label>
+                <div class="input-password">
+                    <input type="password" name="YOUTUBE_STREAM_KEY" id="stream-key"
+                           value="{{ config.YOUTUBE_STREAM_KEY }}"
+                           placeholder="xxxx-xxxx-xxxx-xxxx">
+                    <button type="button" class="btn-toggle-pw" onclick="togglePw('stream-key')">Show</button>
+                </div>
+                <span class="hint">From YouTube Studio > Go Live > Stream Key</span>
+            </div>
+
+            <div class="form-group">
+                <label for="suno-key">Suno API Key (optional)</label>
+                <div class="input-password">
+                    <input type="password" name="SUNO_API_KEY" id="suno-key"
+                           value="{{ config.SUNO_API_KEY }}"
+                           placeholder="(optional)">
+                    <button type="button" class="btn-toggle-pw" onclick="togglePw('suno-key')">Show</button>
+                </div>
+                <span class="hint">Only needed if using the Suno generator</span>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Save Settings</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function togglePw(id) {
+    const input = document.getElementById(id);
+    const btn = input.nextElementSibling;
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = 'Hide';
+    } else {
+        input.type = 'password';
+        btn.textContent = 'Show';
+    }
+}
+</script>
+{% endblock %}

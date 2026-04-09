@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disney Piano Stream</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <div class="header-inner">
+            <h1 class="logo">Disney Piano Stream</h1>
+            <nav>
+                <a href="/" class="{% if request.path == '/' %}active{% endif %}">Dashboard</a>
+                <a href="/generate" class="{% if request.path == '/generate' %}active{% endif %}">Generate</a>
+                <a href="/library" class="{% if '/library' in request.path %}active{% endif %}">Library</a>
+                <a href="/overlays" class="{% if '/overlays' in request.path %}active{% endif %}">Overlays</a>
+                <a href="/settings" class="{% if request.path == '/settings' %}active{% endif %}">Settings</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span class="stream-indicator" id="stream-indicator">
+                <span class="dot" id="stream-dot"></span>
+                <span id="stream-label">Offline</span>
+            </span>
+            <span class="sparkle-text">AI Disney Piano Variations</span>
+        </div>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

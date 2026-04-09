@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h2>Dashboard</h2>
+</div>
+
+<div class="grid grid-2">
+    <!-- Stream Status -->
+    <div class="card card-glow">
+        <div class="card-header">
+            <h3>Stream</h3>
+            <span class="badge badge-{{ 'live' if stream.status == 'live' else 'off' }}">
+                {% if stream.status == 'live' %}
+                    <span class="pulse-dot"></span> LIVE
+                {% else %}
+                    {{ stream.status|upper }}
+                {% endif %}
+            </span>
+        </div>
+        <div class="card-body">
+            {% if stream.status == 'live' %}
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <span class="stat-value" id="uptime">{{ stream.uptime_str }}</span>
+                        <span class="stat-label">Uptime</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">{{ stream.library_videos }}</span>
+                        <span class="stat-label">Videos</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">{{ stream.library_duration_min }}m</span>
+                        <span class="stat-label">Content</span>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <form method="POST" action="/stream/stop">
+                        <button type="submit" class="btn btn-danger">Stop Stream</button>
+                    </form>
+                    <form method="POST" action="/stream/refresh">
+                        <button type="submit" class="btn btn-secondary">Refresh Playlist</button>
+                    </form>
+                </div>
+            {% elif stream.status == 'error' %}
+                <p class="error-text">{{ stream.error }}</p>
+                <form method="POST" action="/stream/start">
+                    <button type="submit" class="btn btn-primary">Retry</button>
+                </form>
+            {% else %}
+                {% if lib_stats.enabled > 0 %}
+                <p class="muted">{{ lib_stats.enabled }} videos ready ({{ lib_stats.total_duration_min }} min)</p>
+                <form method="POST" action="/stream/start">
+                    <button type="submit" class="btn btn-primary btn-lg">Start Stream</button>
+                </form>
+                {% else %}
+                <div class="empty-state-inline">
+                    <p>No videos in library yet</p>
+                    <a href="/generate" class="btn btn-primary">Generate Videos</a>
+                </div>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Generation Status -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Generation</h3>
+            {% if current_task %}
+            <span class="badge badge-active">
+                <span class="pulse-dot"></span> Working
+            </span>
+            {% elif queue_size > 0 %}
+            <span class="badge">{{ queue_size }} queued</span>
+            {% else %}
+            <span class="badge badge-off">Idle</span>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            {% if current_task %}
+                <div class="current-task">
+                    <p class="task-title">
+                        <strong>{{ current_task.generator|title }}</strong>
+                        {% if current_task.song %} &mdash; {{ current_task.song }}{% endif %}
+                    </p>
+                    <div class="progress-bar" id="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <p class="progress-text" id="progress-text">{{ current_task.progress }}</p>
+                </div>
+                {% if queue_size > 0 %}
+                <p class="muted">{{ queue_size }} more in queue</p>
+                {% endif %}
+            {% else %}
+                <a href="/generate" class="btn btn-primary">Generate New Video</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Library Overview -->
+<div class="card">
+    <div class="card-header">
+        <h3>Library</h3>
+        <a href="/library" class="btn btn-sm btn-secondary">View All</a>
+    </div>
+    <div class="card-body">
+        <div class="stats-row">
+            <div class="stat-item">
+                <span class="stat-value">{{ lib_stats.total }}</span>
+                <span class="stat-label">Total</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value">{{ lib_stats.enabled }}</span>
+                <span class="stat-label">Enabled</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value">{{ lib_stats.total_duration_min }}</span>
+                <span class="stat-label">Minutes</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value">{{ lib_stats.total_size_mb }}</span>
+                <span class="stat-label">MB</span>
+            </div>
+            {% for gen, count in lib_stats.by_generator.items() %}
+            <div class="stat-item">
+                <span class="stat-value">{{ count }}</span>
+                <span class="stat-label">{{ gen|replace('_', ' ')|title }}</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Recent videos strip -->
+        {% if recent_assets %}
+        <div class="recent-strip">
+            {% for asset in recent_assets %}
+            <div class="recent-thumb" onclick="previewVideo('{{ asset.id }}')">
+                <img src="/library/thumb/{{ asset.id }}" alt="{{ asset.song }}"
+                     onerror="this.parentElement.classList.add('no-thumb')">
+                <div class="recent-info">
+                    <span class="recent-title">{{ asset.song or 'Untitled' }}</span>
+                    <span class="recent-meta">{{ asset.generator }} &middot; {{ "%.0f"|format(asset.duration_sec) }}s</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Recent History -->
+{% if history %}
+<div class="card">
+    <div class="card-header">
+        <h3>Recent Activity</h3>
+    </div>
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Generator</th>
+                    <th>Song / Style</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in history %}
+                <tr>
+                    <td><span class="badge">{{ task.generator }}</span></td>
+                    <td>{{ task.song or task.get('extra', {}).get('style_id', 'N/A') }}</td>
+                    <td>
+                        <span class="badge badge-{{ 'live' if task.status == 'done' else 'error' }}">
+                            {{ task.status }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Video Preview Modal -->
+<div class="modal" id="video-modal" onclick="closeModal(event)">
+    <div class="modal-content">
+        <video id="preview-video" controls></video>
+        <button class="modal-close" onclick="document.getElementById('video-modal').classList.remove('show')">&times;</button>
+    </div>
+</div>
+
+<script>
+function previewVideo(id) {
+    const modal = document.getElementById('video-modal');
+    const video = document.getElementById('preview-video');
+    video.src = '/library/video/' + id;
+    modal.classList.add('show');
+    video.play();
+}
+function closeModal(e) {
+    if (e.target === e.currentTarget) {
+        e.currentTarget.classList.remove('show');
+        document.getElementById('preview-video').pause();
+    }
+}
+</script>
+{% endblock %}

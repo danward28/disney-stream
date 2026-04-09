@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h2>Stream Overlays</h2>
+    <div class="btn-row">
+        {% if scheduler_running %}
+        <form method="POST" action="/overlays/scheduler/stop">
+            <button type="submit" class="btn btn-secondary">Stop Scheduler</button>
+        </form>
+        <span class="badge badge-live">Scheduler Active</span>
+        {% else %}
+        <form method="POST" action="/overlays/scheduler/start">
+            <button type="submit" class="btn btn-primary">Start Scheduler</button>
+        </form>
+        <span class="badge badge-off">Scheduler Off</span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Create New Overlay -->
+<div class="card">
+    <div class="card-header">
+        <h3>New Overlay</h3>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="/overlays" enctype="multipart/form-data" id="overlay-form">
+            <div class="grid grid-2">
+                <div>
+                    <div class="form-group">
+                        <label for="overlay-type">Type</label>
+                        <select name="type" id="overlay-type" onchange="updatePreview()">
+                            <option value="text_banner">Text Banner</option>
+                            <option value="image_text">Image + Text</option>
+                            <option value="full_banner">Full Image Banner</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Style</label>
+                        <div class="style-grid" id="style-grid">
+                            {% for sid, s in overlay_styles.items() %}
+                            <label class="style-swatch {% if loop.first %}selected{% endif %}"
+                                   data-style="{{ sid }}"
+                                   style="background: rgba({{ s.bg[0] }},{{ s.bg[1] }},{{ s.bg[2] }},0.8);
+                                          border-color: rgba({{ s.border[0] }},{{ s.border[1] }},{{ s.border[2] }},1);">
+                                <input type="radio" name="style" value="{{ sid }}"
+                                       {% if loop.first %}checked{% endif %}
+                                       onchange="updatePreview()">
+                                <span style="color: rgba({{ s.text_color[0] }},{{ s.text_color[1] }},{{ s.text_color[2] }},1);">
+                                    {{ s.name }}
+                                </span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="overlay-text">Text</label>
+                        <input type="text" name="text" id="overlay-text"
+                               placeholder="Check out my new book! Available now on Amazon"
+                               oninput="updatePreview()">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="overlay-position">Position</label>
+                        <select name="position" id="overlay-position" onchange="updatePreview()">
+                            <option value="bottom">Bottom</option>
+                            <option value="top">Top</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="overlay-image">Image (for Image+Text or Full Banner)</label>
+                        <input type="file" name="image" id="overlay-image" accept="image/*">
+                        <span class="hint">Book cover, product photo, or full banner image</span>
+                    </div>
+
+                    <div class="grid grid-2">
+                        <div class="form-group">
+                            <label for="overlay-duration">Show Duration (sec)</label>
+                            <input type="number" name="duration_sec" id="overlay-duration" value="15" min="5" max="120">
+                        </div>
+                        <div class="form-group">
+                            <label for="overlay-interval">Cycle Interval (sec)</label>
+                            <input type="number" name="interval_sec" id="overlay-interval" value="300" min="30" max="3600">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Create Overlay</button>
+                </div>
+
+                <!-- Live Preview -->
+                <div>
+                    <label>Live Preview</label>
+                    <div class="preview-frame" id="preview-frame">
+                        <img id="preview-img" src="/overlays/live-preview?text=Your+overlay+preview&style=elegant_gold"
+                             alt="Preview">
+                    </div>
+                    <p class="hint">Preview updates as you type and change settings</p>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Existing Overlays -->
+{% if overlays %}
+<div class="card">
+    <div class="card-header">
+        <h3>Active Overlays ({{ overlays|length }})</h3>
+    </div>
+    <div class="card-body">
+        {% for overlay in overlays %}
+        <div class="overlay-item {% if not overlay.enabled %}overlay-disabled{% endif %}">
+            <div class="overlay-preview-thumb">
+                <img src="/overlays/preview/{{ overlay.id }}" alt="Preview">
+            </div>
+            <div class="overlay-info">
+                <h4>{{ overlay.type|replace('_', ' ')|title }}
+                    <span class="badge">{{ (overlay_styles.get(overlay.get('style', 'elegant_gold'), {}).get('name', 'Elegant Gold')) }}</span>
+                </h4>
+                <p>{{ overlay.text or '(image only)' }}</p>
+                <p class="muted">
+                    Show {{ overlay.duration_sec }}s every {{ overlay.interval_sec }}s
+                    &middot; {{ overlay.position|title }}
+                    {% if overlay.image %} &middot; {{ overlay.image }}{% endif %}
+                </p>
+            </div>
+            <div class="overlay-actions">
+                <form method="POST" action="/overlays/toggle/{{ overlay.id }}">
+                    <button type="submit" class="btn btn-sm {% if overlay.enabled %}btn-secondary{% else %}btn-primary{% endif %}">
+                        {{ 'Disable' if overlay.enabled else 'Enable' }}
+                    </button>
+                </form>
+                <form method="POST" action="/overlays/delete/{{ overlay.id }}"
+                      onsubmit="return confirm('Delete this overlay?')">
+                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="empty-state">
+    <p>No overlays configured yet. Create one above to promote books, products, or messages on your stream.</p>
+</div>
+{% endif %}
+
+<script>
+let previewTimeout;
+function updatePreview() {
+    clearTimeout(previewTimeout);
+    previewTimeout = setTimeout(() => {
+        const text = document.getElementById('overlay-text').value || 'Your overlay preview';
+        const style = document.querySelector('input[name="style"]:checked').value;
+        const type = document.getElementById('overlay-type').value;
+        const position = document.getElementById('overlay-position').value;
+        const url = `/overlays/live-preview?text=${encodeURIComponent(text)}&style=${style}&type=${type}&position=${position}`;
+        document.getElementById('preview-img').src = url;
+    }, 300);
+}
+
+// Style swatch selection highlighting
+document.querySelectorAll('.style-swatch').forEach(swatch => {
+    swatch.querySelector('input').addEventListener('change', () => {
+        document.querySelectorAll('.style-swatch').forEach(s => s.classList.remove('selected'));
+        swatch.classList.add('selected');
+    });
+});
+</script>
+{% endblock %}

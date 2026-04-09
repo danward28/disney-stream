@@ -1,0 +1,7 @@
+anthropic>=0.90
+flask>=3.0
+gunicorn>=22.0
+mido>=1.3
+midi2audio>=0.1
+numpy>=2.0
+pillow>=12.0

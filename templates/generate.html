@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h2>Generate Music</h2>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>New Generation</h3>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="/generate" id="generate-form">
+            <!-- Generator Selection -->
+            <div class="form-group">
+                <label>Generator</label>
+                <div class="tab-row" id="generator-tabs">
+                    <button type="button" class="tab active" data-generator="piano">Piano (Claude)</button>
+                    <button type="button" class="tab" data-generator="ace_step">ACE-Step</button>
+                    <button type="button" class="tab" data-generator="musicgen">MusicGen</button>
+                    <button type="button" class="tab" data-generator="suno">Suno</button>
+                </div>
+                <input type="hidden" name="generator" id="generator-input" value="piano">
+            </div>
+
+            <!-- Piano Options -->
+            <div class="generator-panel" id="panel-piano">
+                <div class="form-group">
+                    <label for="song">Song</label>
+                    <select name="song" id="song">
+                        <option value="random">Random</option>
+                        {% for song, movie in disney_songs %}
+                        <option value="{{ loop.index0 }}">{{ song }} ({{ movie }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="style">Style</label>
+                    <select name="style" id="style">
+                        <option value="random">Random</option>
+                        {% for s in variation_styles %}
+                        <option value="{{ loop.index0 }}">{{ s|title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Video Background Theme</label>
+                    <div class="theme-grid">
+                        {% for tid, t in video_themes.items() %}
+                        <label class="theme-swatch {% if loop.first %}selected{% endif %}"
+                               style="background: linear-gradient(135deg,
+                                      rgb({{ t.bg_top[0] }},{{ t.bg_top[1] }},{{ t.bg_top[2] }}),
+                                      rgb({{ t.bg_bottom[0] }},{{ t.bg_bottom[1] }},{{ t.bg_bottom[2] }}));">
+                            <input type="radio" name="theme" value="{{ tid }}"
+                                   {% if loop.first %}checked{% endif %}>
+                            <span>{{ t.name }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="count">Count</label>
+                    <input type="number" name="count" id="count" value="1" min="1" max="20">
+                    <span class="hint">Number of videos to generate</span>
+                </div>
+            </div>
+
+            <!-- ACE-Step Options -->
+            <div class="generator-panel hidden" id="panel-ace_step">
+                <div class="form-group">
+                    <label for="ace_step_style">Disney Style</label>
+                    <select name="ace_step_style" id="ace_step_style">
+                        {% for s in ace_step_styles %}
+                        <option value="{{ s.id }}">{{ s.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <p class="hint">Generates a 6-minute orchestral track locally using ACE-Step.</p>
+            </div>
+
+            <!-- MusicGen Options -->
+            <div class="generator-panel hidden" id="panel-musicgen">
+                <div class="form-group">
+                    <label for="musicgen_style">Disney Style</label>
+                    <select name="musicgen_style" id="musicgen_style">
+                        {% for s in musicgen_styles %}
+                        <option value="{{ s.id }}">{{ s.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="musicgen_model">Model Size</label>
+                    <select name="musicgen_model" id="musicgen_model">
+                        <option value="small">Small (fast, lower quality)</option>
+                        <option value="medium" selected>Medium (balanced)</option>
+                        <option value="large">Large (slow, best quality)</option>
+                    </select>
+                </div>
+                <p class="hint">Uses Meta's MusicGen. Generates in chunks locally. Requires audiocraft.</p>
+            </div>
+
+            <!-- Suno Options -->
+            <div class="generator-panel hidden" id="panel-suno">
+                <div class="form-group">
+                    <label for="suno_style">Disney Style</label>
+                    <select name="suno_style" id="suno_style">
+                        {% for s in suno_styles %}
+                        <option value="{{ s.id }}">{{ s.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <p class="hint">Uses Suno API (cloud). Highest quality. Requires SUNO_API_KEY in settings.</p>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Generate</button>
+        </form>
+    </div>
+</div>
+
+<script>
+document.querySelectorAll('#generator-tabs .tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('#generator-tabs .tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const gen = tab.dataset.generator;
+        document.getElementById('generator-input').value = gen;
+        document.querySelectorAll('.generator-panel').forEach(p => p.classList.add('hidden'));
+        document.getElementById('panel-' + gen).classList.remove('hidden');
+    });
+});
+// Theme and style swatch selection
+document.querySelectorAll('.theme-swatch, .style-swatch').forEach(swatch => {
+    swatch.querySelector('input').addEventListener('change', () => {
+        const grid = swatch.parentElement;
+        grid.querySelectorAll('.theme-swatch, .style-swatch').forEach(s => s.classList.remove('selected'));
+        swatch.classList.add('selected');
+    });
+});
+</script>
+{% endblock %}
